@@ -8,7 +8,6 @@ public class imgData {
     private int n_boxes;
     private double sel_ratio;
     SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    DecimalFormat df = new DecimalFormat("#.##");
 
     public imgData(String filename, int n_boxes, double sel_ratio) {
         this.timestamp = new Timestamp(System.currentTimeMillis());
@@ -22,7 +21,7 @@ public class imgData {
         return (dateFormat.format(timestamp) +
                 "," + filename +
                 "," + n_boxes +
-                "," + df.format(sel_ratio));
+                "," + String.valueOf(sel_ratio));
     }
 
 

@@ -35,6 +35,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Stack;
 
 public class Main extends Application{
     String path = null;
@@ -49,9 +50,10 @@ public class Main extends Application{
     List<File> listFiles = new ArrayList<File>();
     List<imgData> listData = new ArrayList<imgData>();
     File file = null;
-    DecimalFormat df = new DecimalFormat("#.##");
     Boolean exported = null;
     SimpleDateFormat dateFormat = new SimpleDateFormat("ddMMyyyy_HHmmss");
+    Stack<Rectangle> lastDragbox = new Stack<Rectangle>();
+    Stack<Double> lastArea = new Stack<Double>();
 
 
 
@@ -78,7 +80,6 @@ public class Main extends Application{
         Rectangle dragBox = null;
         Light.Point anchor = null;
 
-
         @Override
         public void handle(MouseEvent mouseEvent) {
             //System.out.println(mouseEvent.getEventType());
@@ -86,7 +87,6 @@ public class Main extends Application{
                 double ax = mouseEvent.getSceneX();
                 double ay = mouseEvent.getSceneY();
                 n_boxes+=1;
-                t_n_boxes.setText(String.valueOf(n_boxes));
                 dragBox = new Rectangle(0, 0, 0, 0);
                 dragBox.setFill(null);
                 dragBox.setStroke(Color.RED);
@@ -94,6 +94,7 @@ public class Main extends Application{
                 dragBox.setTranslateX(ax);
                 dragBox.setTranslateY(ay);
                 pane.getChildren().add(dragBox);
+                t_n_boxes.setText(String.valueOf(n_boxes));
                 anchor = new Light.Point();
                 anchor.setX(ax);
                 anchor.setY(ay);
@@ -108,16 +109,31 @@ public class Main extends Application{
                 dragBox.setTranslateY(Math.min(anchor.getY(), cy));
 
                 double delta =  (dragBox.getHeight()*dragBox.getWidth())/imArea;
-                t_ratio.setText(df.format(proportion+delta));
+                t_ratio.setText(String.format("%.12f", proportion+delta));
+
             }
             if (mouseEvent.getEventType() == MouseEvent.MOUSE_RELEASED) {
-                proportion+=((dragBox.getHeight()*dragBox.getWidth())/imArea);
+                if(dragBox.getHeight()==0 || dragBox.getWidth()==0){
+                    pane.getChildren().remove(dragBox);
+                    n_boxes-=1;
+                    t_n_boxes.setText(String.valueOf(n_boxes));
+
+                }
+                else{
+                    double curArea = ((dragBox.getHeight()*dragBox.getWidth())/imArea);
+
+                    proportion+=(curArea);
+
+                    lastDragbox.push(dragBox);
+                    lastArea.push(curArea);
+                }
                 dragBox = null;
                 anchor = null;
             }
         }});
 
         globalImageView = myImageView;
+
 
     }
 
@@ -210,10 +226,24 @@ public class Main extends Application{
 
 
         //BUTTONS BOTTOM
+        Button undo = new Button("Undo");
         Button clear = new Button("Clear");
         Button load = new Button("Load images");
         Button next = new Button("Save & Next");
         Button export = new Button("Export");
+        undo.setOnAction(l -> {
+            if(lastDragbox.size()!=0){
+                pane.getChildren().remove(lastDragbox.pop());
+                proportion -= lastArea.pop();
+                if(proportion<0){
+                    proportion*=-1;
+                }
+                n_boxes-=1;
+                t_n_boxes.setText(String.valueOf(n_boxes));
+                t_ratio.setText(String.format("%.12f", proportion));
+                exported = false;
+            }
+        });
         export.setOnAction(l -> {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
             alert.setTitle("Export");
@@ -284,7 +314,7 @@ public class Main extends Application{
             }
         });
 
-        HBox toolbarArea = new HBox(load, clear, next, export);
+        HBox toolbarArea = new HBox(load, undo, clear, next, export);
         toolbarArea.setAlignment(Pos.CENTER);
         toolbarArea.setSpacing(20);
         toolbarArea.setPadding( new Insets( 10 ) );
@@ -293,7 +323,7 @@ public class Main extends Application{
             proportion = 0.00;
             n_boxes = 0;
             t_n_boxes.setText(String.valueOf(n_boxes));
-            t_ratio.setText(df.format(proportion));
+            t_ratio.setText(String.format("%.12f", proportion));
             pane.getChildren().clear();
             pane.setTop(displayArea);
             pane.setBottom(toolbarArea);
@@ -325,7 +355,7 @@ public class Main extends Application{
                 proportion = 0.00;
                 n_boxes = 0;
                 t_n_boxes.setText(String.valueOf(n_boxes));
-                t_ratio.setText(df.format(proportion));
+                t_ratio.setText(String.format("%.12f", proportion));
                 pane.getChildren().clear();
                 pane.setTop(displayArea);
                 pane.setBottom(toolbarArea);
