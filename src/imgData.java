@@ -21,7 +21,7 @@ public class imgData {
         return (dateFormat.format(timestamp) +
                 "," + filename +
                 "," + n_boxes +
-                "," + String.valueOf(sel_ratio));
+                "," + String.format("%.12f", sel_ratio));
     }
 
 

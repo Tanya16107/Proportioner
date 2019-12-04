@@ -30,7 +30,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Timestamp;
-import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,14 +38,13 @@ import java.util.Stack;
 
 public class Main extends Application{
     String path = null;
-    double imX, imY, imArea, imXX, imYY;
+    double imArea;
     ImageView globalImageView = null;
     Text t_ratio = new Text();
     Text t_n_boxes = new Text();
     Bounds imBounds;
     double proportion;
     int n_boxes;
-    int img_counter = 0;
     List<File> listFiles = new ArrayList<File>();
     List<imgData> listData = new ArrayList<imgData>();
     File file = null;
@@ -59,16 +57,12 @@ public class Main extends Application{
 
     public void loadImage(BorderPane pane, boolean reload){
         ImageView myImageView = new ImageView();
-        if(reload){
-            img_counter -=1;
-        }
-        file = listFiles.get(img_counter);
-        img_counter+=1;
-
+        file = listFiles.get(0);
         Image image = new Image(file.toURI().toString());
         myImageView.setImage(image);
         exported = false;
         myImageView.setFitHeight(pane.getHeight()*.80);
+        myImageView.setFitWidth(pane.getWidth()*.80);
         myImageView.setPreserveRatio(true);
         myImageView.setSmooth(true);
 
@@ -137,7 +131,7 @@ public class Main extends Application{
 
     }
 
-    public void screenshot(File img_file, BorderPane pane){
+    public void screenshot(imgData img_data, BorderPane pane){
             Bounds bounds = globalImageView.getBoundsInLocal();
             Bounds screenBounds = globalImageView.localToScreen(bounds);
             int x = (int) screenBounds.getMinX();
@@ -151,11 +145,11 @@ public class Main extends Application{
             BufferedImage image = robot.createScreenCapture(screenRect);
 
             if(PlatformUtil.isWindows()){
-                File file = new File(path+"images\\"+"proportioner_"+img_file.getName());
+                File file = new File(path+"images\\"+"proportioner_"+dateFormat.format(img_data.getTimestamp())+"_"+img_data.getFilename());
                 ImageIO.write(image, "png", file);
             }
             if(PlatformUtil.isMac()){
-                File file = new File(path+"images/"+"proportioner_"+img_file.getName());
+                File file = new File(path+"images/"+"proportioner_"+dateFormat.format(img_data.getTimestamp())+"_"+img_data.getFilename());
                 ImageIO.write(image, "png", file);
 
             }
@@ -320,21 +314,27 @@ public class Main extends Application{
         toolbarArea.setPadding( new Insets( 10 ) );
 
         clear.setOnAction(t -> {
-            proportion = 0.00;
-            n_boxes = 0;
-            t_n_boxes.setText(String.valueOf(n_boxes));
-            t_ratio.setText(String.format("%.12f", proportion));
-            pane.getChildren().clear();
-            pane.setTop(displayArea);
-            pane.setBottom(toolbarArea);
-            loadImage(pane, true);
-            //pane.setCenter(loadImage(pane, true));
-            exported = false;
+            try {
+                proportion = 0.00;
+                n_boxes = 0;
+                lastDragbox.clear();
+                t_n_boxes.setText(String.valueOf(n_boxes));
+                t_ratio.setText(String.format("%.12f", proportion));
+                pane.getChildren().clear();
+                pane.setTop(displayArea);
+                pane.setBottom(toolbarArea);
+                loadImage(pane, true);
+                //pane.setCenter(loadImage(pane, true));
+                exported = false;
+            }
+            catch (IndexOutOfBoundsException e){
+
+            }
         });
 
         next.setOnAction(l -> {
             try{
-            imgData newEntry = new imgData(listFiles.get(img_counter-1).getName(), n_boxes, proportion);
+            imgData newEntry = new imgData(listFiles.get(0).getName(), n_boxes, proportion);
             if(listData.contains(newEntry)){
                 int ind = listData.indexOf(newEntry);
                 imgData updateEntry = listData.get(ind);
@@ -345,15 +345,18 @@ public class Main extends Application{
             else{
                 listData.add(newEntry);
             }
-            screenshot(listFiles.get(img_counter-1), pane);
+
+            screenshot(listData.get(listData.size() - 1), pane);
+            listFiles.remove(0);
             }
             catch (Exception junkException){
                 //do nothing
             }
 
-            if(listFiles.size()!=0 && img_counter<listFiles.size()){
+            if(listFiles.size()!=0){
                 proportion = 0.00;
                 n_boxes = 0;
+                lastDragbox.clear();
                 t_n_boxes.setText(String.valueOf(n_boxes));
                 t_ratio.setText(String.format("%.12f", proportion));
                 pane.getChildren().clear();
@@ -365,6 +368,15 @@ public class Main extends Application{
 
             }
             else{
+                proportion = 0.00;
+                n_boxes = 0;
+                lastDragbox.clear();
+                t_n_boxes.setText(String.valueOf(n_boxes));
+                t_ratio.setText(String.format("%.12f", proportion));
+                pane.getChildren().clear();
+                pane.setTop(displayArea);
+                pane.setBottom(toolbarArea);
+
                 Alert alert = new Alert(Alert.AlertType.ERROR);
                 alert.setHeaderText(null);
                 alert.setTitle("");
@@ -411,7 +423,7 @@ public class Main extends Application{
             public void handle(WindowEvent e) {
                 Alert alert;
                 Optional<ButtonType> result;
-                if((listFiles.size()!=0 && img_counter<listFiles.size()) || (exported!=null && exported==false)){
+                if(listFiles.size()!=0 || (exported!=null && exported==false)){
                     alert = new Alert(Alert.AlertType.WARNING);
                     alert.setHeaderText(null);
                     alert.setTitle("Quit");
